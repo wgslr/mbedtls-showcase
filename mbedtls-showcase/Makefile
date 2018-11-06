@@ -15,6 +15,8 @@
 ######################################
 TARGET = mbedtls-showcase
 
+flash: build/mbedtls-showcase.bin
+	st-flash write build/mbedtls-showcase.bin 0x08000000
 
 ######################################
 # building variables
