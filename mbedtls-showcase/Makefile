@@ -15,9 +15,6 @@
 ######################################
 TARGET = mbedtls-showcase
 
-flash: build/mbedtls-showcase.bin
-	st-flash write build/mbedtls-showcase.bin 0x08000000
-
 ######################################
 # building variables
 ######################################
@@ -338,6 +335,8 @@ LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BU
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
+flash: build/mbedtls-showcase.bin
+	st-flash write build/mbedtls-showcase.bin 0x08000000
 
 #######################################
 # build the application
