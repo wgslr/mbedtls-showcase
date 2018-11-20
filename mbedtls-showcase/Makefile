@@ -341,9 +341,12 @@ flash: build/mbedtls-showcase.bin
 #######################################
 # build the application
 #######################################
+
+VPATH=./Middlewares/Third_Party/mbedTLS/library/:$(sort -r $(dir $(C_SOURCES)))
+
 # list of objects
 OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(C_SOURCES:.c=.o)))
-vpath %.c $(sort $(dir $(C_SOURCES)))
+vpath %.c
 # list of ASM program objects
 OBJECTS += $(addprefix $(BUILD_DIR)/,$(notdir $(ASM_SOURCES:.s=.o)))
 vpath %.s $(sort $(dir $(ASM_SOURCES)))
