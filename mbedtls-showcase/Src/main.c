@@ -329,6 +329,14 @@ void MX_MBEDTLS_Init(void)
    mbedtls_net_init(&client_fd);
    mbedtls_net_init(&listen_fd);
 
+   mbedtls_ssl_init(&ssl);
+   mbedtls_ssl_config_init(&conf);
+   mbedtls_x509_crt_init(&srvcert);
+   mbedtls_pk_init(&pkey);
+   mbedtls_entropy_init(&entropy);
+   mbedtls_ctr_drbg_init(&ctr_drbg);
+
+
    // int ret, len;
    //     unsigned char buf[1024];
 
