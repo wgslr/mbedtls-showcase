@@ -54,6 +54,9 @@
 #include "usb_host.h"
 
 /* USER CODE BEGIN Includes */
+#include "net_sockets.h"
+#include "entropy.h"
+#include "ctr_drbg.h"
 
 /* USER CODE END Includes */
 
@@ -304,6 +307,57 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+mbedtls_net_context listen_fd;
+mbedtls_net_context client_fd;
+mbedtls_entropy_context entropy;
+mbedtls_ctr_drbg_context ctr_drbg;
+mbedtls_ssl_context ssl;
+mbedtls_ssl_config conf;
+mbedtls_x509_crt srvcert;
+mbedtls_pk_context pkey;
+
+/* MBEDTLS init function */
+void MX_MBEDTLS_Init(void)
+{
+   /** 
+  */
+
+  //  /* USER CODE BEGIN 3 */
+   const char *pers = "ssl_server";
+
+   mbedtls_net_init(&client_fd);
+   mbedtls_net_init(&listen_fd);
+
+   // int ret, len;
+   //     unsigned char buf[1024];
+
+   // #if defined(MBEDTLS_SSL_CACHE_C)
+   //     mbedtls_ssl_cache_context cache;
+   // #endif
+
+   //     mbedtls_net_init( &listen_fd );
+   //     mbedtls_net_init( &client_fd );
+   //     mbedtls_ssl_init( &ssl );
+   //     mbedtls_ssl_config_init( &conf );
+   // #if defined(MBEDTLS_SSL_CACHE_C)
+   //     mbedtls_ssl_cache_init( &cache );
+   // #endif
+   //     mbedtls_x509_crt_init( &srvcert );
+   //     mbedtls_pk_init( &pkey );
+   //     mbedtls_entropy_init( &entropy );
+   //     mbedtls_ctr_drbg_init( &ctr_drbg );
+
+   // #if defined(MBEDTLS_DEBUG_C)
+   //     mbedtls_debug_set_threshold( DEBUG_LEVEL );
+   //   mbdetls_net_init((void*)0);
+   //   mbdetls_net_init((void*)0);
+   //   mbdetls_net_init((void*)0);
+   // #endif
+   /* USER CODE END 3 */
+
+}
+
 
 /* USER CODE END 4 */
 

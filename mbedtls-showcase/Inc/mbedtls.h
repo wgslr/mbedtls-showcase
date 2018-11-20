@@ -66,7 +66,7 @@
 /* USER CODE END 1 */
 
 /* MBEDTLS init function */
-void MX_MBEDTLS_Init(void);
+// void MX_MBEDTLS_Init(void);
 
 /* USER CODE BEGIN 2 */
 /* USER CODE END 2 */
