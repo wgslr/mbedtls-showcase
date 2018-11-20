@@ -57,6 +57,7 @@
 #include "net_sockets.h"
 #include "entropy.h"
 #include "ctr_drbg.h"
+#include "certs.h"
 
 /* USER CODE END Includes */
 
@@ -320,11 +321,7 @@ mbedtls_pk_context pkey;
 /* MBEDTLS init function */
 void MX_MBEDTLS_Init(void)
 {
-   /** 
-  */
-
-  //  /* USER CODE BEGIN 3 */
-   const char *pers = "ssl_server";
+   /* USER CODE BEGIN 3 */
 
    mbedtls_net_init(&client_fd);
    mbedtls_net_init(&listen_fd);
@@ -336,34 +333,7 @@ void MX_MBEDTLS_Init(void)
    mbedtls_entropy_init(&entropy);
    mbedtls_ctr_drbg_init(&ctr_drbg);
 
-
-   // int ret, len;
-   //     unsigned char buf[1024];
-
-   // #if defined(MBEDTLS_SSL_CACHE_C)
-   //     mbedtls_ssl_cache_context cache;
-   // #endif
-
-   //     mbedtls_net_init( &listen_fd );
-   //     mbedtls_net_init( &client_fd );
-   //     mbedtls_ssl_init( &ssl );
-   //     mbedtls_ssl_config_init( &conf );
-   // #if defined(MBEDTLS_SSL_CACHE_C)
-   //     mbedtls_ssl_cache_init( &cache );
-   // #endif
-   //     mbedtls_x509_crt_init( &srvcert );
-   //     mbedtls_pk_init( &pkey );
-   //     mbedtls_entropy_init( &entropy );
-   //     mbedtls_ctr_drbg_init( &ctr_drbg );
-
-   // #if defined(MBEDTLS_DEBUG_C)
-   //     mbedtls_debug_set_threshold( DEBUG_LEVEL );
-   //   mbdetls_net_init((void*)0);
-   //   mbdetls_net_init((void*)0);
-   //   mbdetls_net_init((void*)0);
-   // #endif
-   /* USER CODE END 3 */
-
+  /* USER CODE END 3 */
 }
 
 
