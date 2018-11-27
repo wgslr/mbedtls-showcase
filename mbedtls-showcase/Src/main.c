@@ -64,6 +64,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+RNG_HandleTypeDef hrng;
+
 UART_HandleTypeDef huart3;
 
 osThreadId defaultTaskHandle;
@@ -77,6 +79,7 @@ osThreadId defaultTaskHandle;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_RNG_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
@@ -134,6 +137,10 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
+  MX_RNG_Init();
+  /* USER CODE BEGIN 2 */
+
+
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -250,6 +257,18 @@ void SystemClock_Config(void)
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 15, 0);
+}
+
+/* RNG init function */
+static void MX_RNG_Init(void)
+{
+
+  hrng.Instance = RNG;
+  if (HAL_RNG_Init(&hrng) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
 }
 
 /* USART3 init function */
