@@ -94,7 +94,7 @@ int __io_putchar(int ch)
 {
   uint8_t data = ch;
 #if PRINTF_USES_HAL_TX
-  HAL_StatusTypeDef status = HAL_UART_Transmit(&huart1, (uint8_t *)&data, len, 100);
+  HAL_StatusTypeDef status = HAL_UART_Transmit(&huart3, (uint8_t *)&data, len, 100);
 #else
   while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TXE) == RESET)
   {
@@ -143,6 +143,9 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
+
+  /* USER CODE BEGIN 2 */
+  debug_init(&huart3);
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -370,10 +373,12 @@ void StartDefaultTask(void const * argument)
 
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
-  for(;;)
+  for (;;)
   {
+
+    xprintf("Toggling LED \r\n");
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-    osDelay(100);
+    osDelay(1000);
   }
   /* USER CODE END 5 */ 
 }
