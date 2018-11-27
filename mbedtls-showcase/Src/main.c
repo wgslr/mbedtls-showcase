@@ -85,6 +85,22 @@ void StartDefaultTask(void const * argument);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
+#define PRINTF_USES_HAL_TX 0
+
+int __io_putchar(int ch)
+{
+  uint8_t data = ch;
+#if PRINTF_USES_HAL_TX
+  HAL_StatusTypeDef status = HAL_UART_Transmit(&huart1, (uint8_t *)&data, len, 100);
+#else
+  while (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_TXE) == RESET)
+  {
+    ;
+  }
+  huart3.Instance->TDR = (uint16_t)data;
+#endif
+  return 0;
+}
 
 /* USER CODE END 0 */
 
@@ -136,6 +152,9 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
+
+  xprintf("Starting default task");
+
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
