@@ -69,6 +69,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+  printf("HardFault_Handler\r\n");
 
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
@@ -87,6 +88,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
+  printf("MemManager_Handler\r\n");
 
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
@@ -105,6 +107,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
+  printf("BusFault_Handler\r\n");
 
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
@@ -123,6 +126,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
+  printf("UsageFault_Handler\r\n");
 
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
@@ -141,6 +145,7 @@ void UsageFault_Handler(void)
 void DebugMon_Handler(void)
 {
   /* USER CODE BEGIN DebugMonitor_IRQn 0 */
+  printf("DebugMon_Handler\r\n");
 
   /* USER CODE END DebugMonitor_IRQn 0 */
   /* USER CODE BEGIN DebugMonitor_IRQn 1 */
