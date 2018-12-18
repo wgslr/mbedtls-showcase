@@ -52,6 +52,7 @@
 
 /* USER CODE BEGIN 0 */
 #include "lwip.h"
+#include "term_io.h"
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -69,7 +70,13 @@ void MX_MBEDTLS_Init(void)
   */
 
   /* USER CODE BEGIN 3 */
+  xprintf("%s begin\r\n", __FUNCTION__);
+
   MX_LWIP_Init();
+  xprintf("MX_LWIP_Init initialized\r\n");
+
+
+  xprintf("%s end\r\n", __FUNCTION__);
   /* USER CODE END 3 */
 
 }
