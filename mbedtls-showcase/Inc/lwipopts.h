@@ -60,6 +60,8 @@
 
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN 0 */
+#define LWIP_DEBUG 1
+#define DHCP_DEBUG LWIP_DBG_ON
 
 /* USER CODE END 0 */
 
