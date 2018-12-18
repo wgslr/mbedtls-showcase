@@ -55,6 +55,11 @@
 
 /* USER CODE BEGIN Includes */
 
+
+#include "term_io.h"
+#include "dbgu.h"
+#include "ansi.h"
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
