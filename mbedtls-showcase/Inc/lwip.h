@@ -70,6 +70,7 @@
 #endif /* WITH_RTOS */
 
 /* USER CODE BEGIN 0 */
+void print_addr();
 
 /* USER CODE END 0 */
 

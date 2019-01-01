@@ -53,6 +53,7 @@
 /* USER CODE BEGIN 0 */
 #include "lwip.h"
 #include "term_io.h"
+#include "unistd.h" // for sleep function
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -73,7 +74,15 @@ void MX_MBEDTLS_Init(void)
   xprintf("%s begin\r\n", __FUNCTION__);
 
   MX_LWIP_Init();
-  xprintf("MX_LWIP_Init initialized\r\n");
+  // DHCP flow continues asynchronously after this function finishes
+  xprintf("MX_LWIP_Init finished\r\n");
+
+  // the global variable is styill 0000
+  print_addr();
+  osDelay(5000);
+  print_addr();
+  osDelay(5000);
+  print_addr();
 
 
   xprintf("%s end\r\n", __FUNCTION__);

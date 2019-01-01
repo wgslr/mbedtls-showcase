@@ -46,21 +46,22 @@
   *
   ******************************************************************************
   */
-  
+
 /* Includes ------------------------------------------------------------------*/
 #include "lwip.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
-#if defined ( __CC_ARM )  /* MDK ARM Compiler */
+#if defined(__CC_ARM) /* MDK ARM Compiler */
 #include "lwip/sio.h"
 #endif /* MDK ARM Compiler */
 
 /* USER CODE BEGIN 0 */
+#include "term_io.h"
 
 /* USER CODE END 0 */
 /* Private function prototypes -----------------------------------------------*/
 /* ETH Variables initialization ----------------------------------------------*/
-void _Error_Handler(char * file, int line);
+void _Error_Handler(char *file, int line);
 
 /* USER CODE BEGIN 1 */
 
@@ -74,6 +75,14 @@ ip4_addr_t gw;
 
 /* USER CODE BEGIN 2 */
 
+void print_addr()
+{
+  xprintf("Address is %lu.", ipaddr.addr & (0xFF << 0));
+  xprintf("%lu.", (ipaddr.addr & (0xFF << 8)) >> 8);
+  xprintf("%lu.", (ipaddr.addr & (0xFF << 16)) >> 16);
+  xprintf("%lu\n", (ipaddr.addr & (0xFF << 24)) >> 24);
+}
+
 /* USER CODE END 2 */
 
 /**
@@ -82,7 +91,7 @@ ip4_addr_t gw;
 void MX_LWIP_Init(void)
 {
   /* Initilialize the LwIP stack with RTOS */
-  tcpip_init( NULL, NULL );
+  tcpip_init(NULL, NULL);
 
   /* IP addresses initialization with DHCP (IPv4) */
   ipaddr.addr = 0;
@@ -109,9 +118,9 @@ void MX_LWIP_Init(void)
   /* Start DHCP negotiation for a network interface (IPv4) */
   dhcp_start(&gnetif);
 
-/* USER CODE BEGIN 3 */
+  /* USER CODE BEGIN 3 */
 
-/* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 #ifdef USE_OBSOLETE_USER_CODE_SECTION_4
@@ -121,7 +130,7 @@ void MX_LWIP_Init(void)
 /* USER CODE END 4 */
 #endif
 
-#if defined ( __CC_ARM )  /* MDK ARM Compiler */
+#if defined(__CC_ARM) /* MDK ARM Compiler */
 /**
  * Opens a serial device for communication.
  *
@@ -132,10 +141,10 @@ sio_fd_t sio_open(u8_t devnum)
 {
   sio_fd_t sd;
 
-/* USER CODE BEGIN 7 */
+  /* USER CODE BEGIN 7 */
   sd = 0; // dummy code
-/* USER CODE END 7 */
-	
+          /* USER CODE END 7 */
+
   return sd;
 }
 
@@ -149,8 +158,8 @@ sio_fd_t sio_open(u8_t devnum)
  */
 void sio_send(u8_t c, sio_fd_t fd)
 {
-/* USER CODE BEGIN 8 */
-/* USER CODE END 8 */
+  /* USER CODE BEGIN 8 */
+  /* USER CODE END 8 */
 }
 
 /**
@@ -168,9 +177,9 @@ u32_t sio_read(sio_fd_t fd, u8_t *data, u32_t len)
 {
   u32_t recved_bytes;
 
-/* USER CODE BEGIN 9 */
+  /* USER CODE BEGIN 9 */
   recved_bytes = 0; // dummy code
-/* USER CODE END 9 */	
+                    /* USER CODE END 9 */
   return recved_bytes;
 }
 
@@ -187,9 +196,9 @@ u32_t sio_tryread(sio_fd_t fd, u8_t *data, u32_t len)
 {
   u32_t recved_bytes;
 
-/* USER CODE BEGIN 10 */
+  /* USER CODE BEGIN 10 */
   recved_bytes = 0; // dummy code
-/* USER CODE END 10 */	
+                    /* USER CODE END 10 */
   return recved_bytes;
 }
 #endif /* MDK ARM Compiler */
