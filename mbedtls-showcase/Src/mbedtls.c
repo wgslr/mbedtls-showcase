@@ -53,7 +53,7 @@
 /* USER CODE BEGIN 0 */
 #include "lwip.h"
 #include "term_io.h"
-#include "unistd.h" // for sleep function
+#include "net_sockets.h"
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -62,6 +62,7 @@
 /* Global variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN 2 */
+mbedtls_net_context net_ctx;
 /* USER CODE END 2 */
 
 /* MBEDTLS init function */
@@ -71,19 +72,17 @@ void MX_MBEDTLS_Init(void)
   */
 
   /* USER CODE BEGIN 3 */
+  int ret = 0;
   xprintf("%s begin\r\n", __FUNCTION__);
 
-  MX_LWIP_Init();
-  // DHCP flow continues asynchronously after this function finishes
-  xprintf("MX_LWIP_Init finished\r\n");
+  mbedtls_net_init(&net_ctx);
 
-  // the global variable is styill 0000
-  print_addr();
-  osDelay(5000);
-  print_addr();
-  osDelay(5000);
-  print_addr();
+  osDelay(6000);
 
+  xprintf("%s attempt net_bind\r\n", __FUNCTION__);
+  if((ret = mbedtls_net_bind(&net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
+    xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
+  }
 
   xprintf("%s end\r\n", __FUNCTION__);
   /* USER CODE END 3 */

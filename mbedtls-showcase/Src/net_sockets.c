@@ -80,7 +80,7 @@
 #include "main.h"
 /* Within 'USER CODE' section, code will be kept by default at each generation */
 /* USER CODE BEGIN INCLUDE */
-
+#include "term_io.h"
 /* USER CODE END INCLUDE */
 
 static int net_would_block( const mbedtls_net_context *ctx );
@@ -90,13 +90,15 @@ static int net_would_block( const mbedtls_net_context *ctx );
 /*
  * Initialize LwIP stack and get a dynamic IP address.
  */
-void mbedtls_net_init( mbedtls_net_context *ctx )
-{
-/* USER CODE BEGIN 0 */
+void mbedtls_net_init(mbedtls_net_context *ctx) {
+  /* USER CODE BEGIN 0 */
+  xprintf("%s begin\r\n", __FUNCTION__);
+  ctx->fd = -1;
 
 /* USER CODE END 0 */
   MX_LWIP_Init();
-/* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
+  xprintf("%s end\r\n", __FUNCTION__);
 
 /* USER CODE END 1 */
 }
@@ -177,9 +179,64 @@ int mbedtls_net_connect( mbedtls_net_context *ctx, const char *host, const char 
 int mbedtls_net_bind( mbedtls_net_context *ctx, const char *bind_ip, const char *port, int proto )
 {
   int ret = 0;
-/* USER CODE BEGIN 10 */
-  mbedtls_printf ("%s() NOT IMPLEMENTED!!\n", __FUNCTION__);
-/* USER CODE END 10 */
+  /* USER CODE BEGIN 10 */
+  xprintf("%s begin\r\n", __FUNCTION__);
+  int n;
+  struct addrinfo hints, *addr_list, *cur;
+
+  /* Bind to IPv6 and/or IPv4, but only in the desired protocol */
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = proto == MBEDTLS_NET_PROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
+  hints.ai_protocol =
+      proto == MBEDTLS_NET_PROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP;
+  if (bind_ip == NULL)
+    hints.ai_flags = AI_PASSIVE;
+
+  if (getaddrinfo(bind_ip, port, &hints, &addr_list) != 0)
+    return (MBEDTLS_ERR_NET_UNKNOWN_HOST);
+
+  /* Try the sockaddrs until a binding succeeds */
+  ret = MBEDTLS_ERR_NET_UNKNOWN_HOST;
+  for (cur = addr_list; cur != NULL; cur = cur->ai_next) {
+    ctx->fd = (int)socket(cur->ai_family, cur->ai_socktype, cur->ai_protocol);
+    if (ctx->fd < 0) {
+      ret = MBEDTLS_ERR_NET_SOCKET_FAILED;
+      continue;
+    }
+
+    n = 1;
+    if (setsockopt(ctx->fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&n,
+                   sizeof(n)) != 0) {
+      close(ctx->fd);
+      ret = MBEDTLS_ERR_NET_SOCKET_FAILED;
+      continue;
+    }
+
+    if (bind(ctx->fd, cur->ai_addr, (socklen_t)cur->ai_addrlen) != 0) {
+      close(ctx->fd);
+      ret = MBEDTLS_ERR_NET_BIND_FAILED;
+      continue;
+    }
+
+    /* Listen only makes sense for TCP */
+    if (proto == MBEDTLS_NET_PROTO_TCP) {
+      if (listen(ctx->fd, MBEDTLS_NET_LISTEN_BACKLOG) != 0) {
+        close(ctx->fd);
+        ret = MBEDTLS_ERR_NET_LISTEN_FAILED;
+        continue;
+      }
+    }
+
+    /* I we ever get there, it's a success */
+    ret = 0;
+    break;
+  }
+
+  freeaddrinfo(addr_list);
+
+  xprintf("%s end\r\n", __FUNCTION__);
+  /* USER CODE END 10 */
 
   return ret;
 }
