@@ -51,6 +51,7 @@
 #include "lwip.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
+
 #if defined(__CC_ARM) /* MDK ARM Compiler */
 #include "lwip/sio.h"
 #endif /* MDK ARM Compiler */
@@ -75,8 +76,7 @@ ip4_addr_t gw;
 
 /* USER CODE BEGIN 2 */
 
-void print_addr()
-{
+void print_addr() {
   xprintf("Address is %lu.", ipaddr.addr & (0xFF << 0));
   xprintf("%lu.", (ipaddr.addr & (0xFF << 8)) >> 8);
   xprintf("%lu.", (ipaddr.addr & (0xFF << 16)) >> 16);
@@ -88,8 +88,7 @@ void print_addr()
 /**
   * LwIP initialization function
   */
-void MX_LWIP_Init(void)
-{
+void MX_LWIP_Init(void) {
   /* Initilialize the LwIP stack with RTOS */
   tcpip_init(NULL, NULL);
 
@@ -104,13 +103,10 @@ void MX_LWIP_Init(void)
   /* Registers the default network interface */
   netif_set_default(&gnetif);
 
-  if (netif_is_link_up(&gnetif))
-  {
+  if (netif_is_link_up(&gnetif)) {
     /* When the netif is fully configured this function must be called */
     netif_set_up(&gnetif);
-  }
-  else
-  {
+  } else {
     /* When the netif link is down this function must be called */
     netif_set_down(&gnetif);
   }

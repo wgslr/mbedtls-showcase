@@ -66,10 +66,9 @@ mbedtls_net_context net_ctx;
 /* USER CODE END 2 */
 
 /* MBEDTLS init function */
-void MX_MBEDTLS_Init(void)
-{
-   /** 
-  */
+void MX_MBEDTLS_Init(void) {
+  /**
+ */
 
   /* USER CODE BEGIN 3 */
   int ret = 0;
@@ -80,7 +79,7 @@ void MX_MBEDTLS_Init(void)
   osDelay(6000);
 
   xprintf("%s attempt net_bind\r\n", __FUNCTION__);
-  if((ret = mbedtls_net_bind(&net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
+  if ((ret = mbedtls_net_bind(&net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
     xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
   }
 
@@ -95,7 +94,7 @@ void MX_MBEDTLS_Init(void)
 /**
   * @}
   */
- 
+
 /**
   * @}
   */
