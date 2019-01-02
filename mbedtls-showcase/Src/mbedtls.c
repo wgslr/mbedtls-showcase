@@ -48,12 +48,14 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <errno.h>
 #include "mbedtls.h"
 
 /* USER CODE BEGIN 0 */
 #include "lwip.h"
 #include "term_io.h"
 #include "net_sockets.h"
+#include "errno.h"
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -71,17 +73,25 @@ void MX_MBEDTLS_Init(void) {
  */
 
   /* USER CODE BEGIN 3 */
-  int ret = 0;
+  int ret = 257;
+  int delay = 1000;
   xprintf("%s begin\r\n", __FUNCTION__);
 
   mbedtls_net_init(&net_ctx);
 
-  osDelay(6000);
+  do {
+    xprintf("wait for %ds\r\n", delay / 1000);
+    osDelay(delay);
 
-  xprintf("%s attempt net_bind\r\n", __FUNCTION__);
-  if ((ret = mbedtls_net_bind(&net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
-    xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
-  }
+    xprintf("%s attempt net_bind\r\n", __FUNCTION__);
+    if ((ret = mbedtls_net_bind(&net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
+      xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
+      xprintf("errno is %d\r\n", errno);
+    }
+
+    delay *= 2;
+
+  } while (ret != 0);
 
   xprintf("%s end\r\n", __FUNCTION__);
   /* USER CODE END 3 */
