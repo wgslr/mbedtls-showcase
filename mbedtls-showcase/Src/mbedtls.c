@@ -84,7 +84,7 @@ void MX_MBEDTLS_Init(void) {
 
   /* USER CODE BEGIN 3 */
   int ret = 257;
-  int delay = 1000;
+  int delay = 5000;
   xprintf("%s begin\r\n", __FUNCTION__);
 
   mbedtls_net_init(&listen_net_ctx);
@@ -96,54 +96,54 @@ void MX_MBEDTLS_Init(void) {
   mbedtls_entropy_init(&entropy);
   mbedtls_ctr_drbg_init(&ctr_drbg);
 
-  do {
-    xprintf("wait for %ds\r\n", delay / 1000);
-    osDelay(delay);
-    delay *= 2;
+  // ugly wait for DHCP
+  xprintf("wait for %ds\r\n", delay / 1000);
+  osDelay(delay);
 
-    xprintf("%s attempt net_bind\r\n", __FUNCTION__);
-    if ((ret = mbedtls_net_bind(&listen_net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
-      xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
-      xprintf("errno is %d\r\n", errno);
-    }
+  xprintf("%s attempt net_bind\r\n", __FUNCTION__);
+  if ((ret = mbedtls_net_bind(&listen_net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
+    xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
+    return;
+  }
 
-    xprintf("%s load test server cert\r\n", __FUNCTION__);
-    ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_srv_crt,
-                                 mbedtls_test_srv_crt_len);
+  xprintf("%s load test server cert\r\n", __FUNCTION__);
+  ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_srv_crt,
+                               mbedtls_test_srv_crt_len);
+  if (ret != 0) {
+    xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
+    return;
+  }
+
+  xprintf("%s load test server key\r\n", __FUNCTION__);
+  ret = mbedtls_pk_parse_key(&pkey, (const unsigned char *) mbedtls_test_srv_key,
+                             mbedtls_test_srv_key_len, NULL, 0);
+  if (ret != 0) {
+    xprintf(" failed\n  !  mbedtls_pk_parse_key returned %d\n\n", ret);
+    return;
+  }
+
+
+    xprintf("%s load test CAs\r\n", __FUNCTION__);
+    ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
+                                 mbedtls_test_cas_pem_len);
     if (ret != 0) {
       xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
-      continue;
+      return;
     }
 
-    xprintf("%s load test server key\r\n", __FUNCTION__);
-    ret = mbedtls_pk_parse_key(&pkey, (const unsigned char *) mbedtls_test_srv_key,
-                               mbedtls_test_srv_key_len, NULL, 0);
-    if (ret != 0) {
-      xprintf(" failed\n  !  mbedtls_pk_parse_key returned %d\n\n", ret);
-      continue;
-    }
+  xprintf("%s loaded certificates\r\n", __FUNCTION__);
 
-//
-//    xprintf("%s load test CAs\r\n", __FUNCTION__);
-//    ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
-//                                 mbedtls_test_cas_pem_len);
-//    if (ret != 0) {
-//      xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
-//      continue;
-//    }
+  xprintf("  . Seeding the random number generator...\n");
 
-    xprintf("%s loaded certificates\r\n", __FUNCTION__);
+  if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0)) != 0) {
+    xprintf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
+    return;
+  }
 
-    xprintf("  . Seeding the random number generator...");
+  xprintf("RNG seeded\n");
 
-    if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0)) != 0) {
-      xprintf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
-      continue;
-    }
+  
 
-    xprintf("RNG seeded\n");
-
-  } while (ret != 0);
 
   xprintf("%s end\r\n", __FUNCTION__);
   /* USER CODE END 3 */
