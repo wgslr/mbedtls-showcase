@@ -92,6 +92,7 @@
 static int net_would_block(const mbedtls_net_context *ctx);
 /* USER CODE BEGIN VARIABLES */
 struct sockaddr_storage client_addr;
+static int initialized = 0;
 /* USER CODE END VARIABLES */
 /*
  * Initialize LwIP stack and get a dynamic IP address.
@@ -99,13 +100,20 @@ struct sockaddr_storage client_addr;
 void mbedtls_net_init(mbedtls_net_context *ctx) {
   /* USER CODE BEGIN 0 */
   xprintf("%s begin\r\n", __FUNCTION__);
+
   ctx->fd = -1;
+
+  if(initialized){
+    xprintf("%s LWIP already initialized\r\n", __FUNCTION__);
+    return;
+  }
 
 /* USER CODE END 0 */
   MX_LWIP_Init();
   /* USER CODE BEGIN 1 */
-  xprintf("%s end\r\n", __FUNCTION__);
+  initialized = 1;
 
+  xprintf("%s end\r\n", __FUNCTION__);
 /* USER CODE END 1 */
 }
 
