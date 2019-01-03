@@ -59,6 +59,7 @@
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/certs.h>
+#include <mbedtls/error.h>
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -123,13 +124,13 @@ void MX_MBEDTLS_Init(void) {
   }
 
 
-    xprintf("%s load test CAs\r\n", __FUNCTION__);
-    ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
-                                 mbedtls_test_cas_pem_len);
-    if (ret != 0) {
-      xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
-      return;
-    }
+  xprintf("%s load test CAs\r\n", __FUNCTION__);
+  ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
+                               mbedtls_test_cas_pem_len);
+  if (ret != 0) {
+    xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
+    return;
+  }
 
   xprintf("%s loaded certificates\r\n", __FUNCTION__);
 
@@ -142,7 +143,75 @@ void MX_MBEDTLS_Init(void) {
 
   xprintf("RNG seeded\n");
 
-  
+  xprintf("Configuring SSL....\n");
+
+  if ((ret = mbedtls_ssl_config_defaults(&conf,
+                                         MBEDTLS_SSL_IS_SERVER,
+                                         MBEDTLS_SSL_TRANSPORT_STREAM,
+                                         MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
+    xprintf(" failed\n  ! mbedtls_ssl_config_defaults returned %d\n\n", ret);
+    return;
+  }
+
+  mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+//  mbedtls_ssl_conf_dbg(&conf, my_debug, stdout);
+
+  mbedtls_ssl_conf_ca_chain(&conf, srvcert.next, NULL);
+  if ((ret = mbedtls_ssl_conf_own_cert(&conf, &srvcert, &pkey)) != 0) {
+    xprintf(" failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n\n", ret);
+    return;
+  }
+
+  if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0) {
+    xprintf(" failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret);
+    return;
+  }
+
+  xprintf(" ok\n");
+
+  // @fixme extract function with a loop
+  reset:
+#ifdef MBEDTLS_ERROR_C
+  if (ret != 0) {
+    char error_buf[100];
+    mbedtls_strerror(ret, error_buf, 100);
+    xprintf("Last error was: %d - %s\n\n", ret, error_buf);
+  }
+#endif
+
+  mbedtls_net_free(&client_net_ctx);
+
+  mbedtls_ssl_session_reset(&ssl);
+
+  /*
+   * 3. Wait until a client connects
+   */
+  xprintf("  . Waiting for a remote connection ...\n");
+
+  if ((ret = mbedtls_net_accept(&listen_net_ctx, &client_net_ctx,
+                                NULL, 0, NULL)) != 0) {
+    xprintf(" failed\n  ! mbedtls_net_accept returned %d\n\n", ret);
+    return;
+  }
+
+  mbedtls_ssl_set_bio(&ssl, &client_net_ctx, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+  xprintf(" ok\n");
+
+  /*
+   * 5. Handshake
+   */
+  xprintf("  . Performing the SSL/TLS handshake...\n");
+
+  while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
+    xprintf(" looping handshake\n");
+    if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+      xprintf(" failed\n  ! mbedtls_ssl_handshake returned %d\n\n", ret);
+      goto reset;
+    }
+  }
+
+  xprintf(" handshaked\n");
 
 
   xprintf("%s end\r\n", __FUNCTION__);
