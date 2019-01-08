@@ -76,6 +76,15 @@ mbedtls_ssl_context ssl;
 mbedtls_ssl_config conf;
 mbedtls_x509_crt srvcert;
 mbedtls_pk_context pkey;
+
+static void my_debug(void *ctx, int level,
+                     const char *file, int line,
+                     const char *str) {
+  ((void) level);
+
+  xprintf("%s:%04d: %s\n", file, line, str);
+//  fflush(  (FILE *) ctx  );
+}
 /* USER CODE END 2 */
 
 /* MBEDTLS init function */
@@ -85,7 +94,7 @@ void MX_MBEDTLS_Init(void) {
 
   /* USER CODE BEGIN 3 */
   int ret = 257;
-  int delay = 5000;
+  int delay = 6000;
   xprintf("%s begin\r\n", __FUNCTION__);
 
   mbedtls_net_init(&listen_net_ctx);
@@ -115,20 +124,20 @@ void MX_MBEDTLS_Init(void) {
     return;
   }
 
-  xprintf("%s load test server key\r\n", __FUNCTION__);
-  ret = mbedtls_pk_parse_key(&pkey, (const unsigned char *) mbedtls_test_srv_key,
-                             mbedtls_test_srv_key_len, NULL, 0);
-  if (ret != 0) {
-    xprintf(" failed\n  !  mbedtls_pk_parse_key returned %d\n\n", ret);
-    return;
-  }
-
 
   xprintf("%s load test CAs\r\n", __FUNCTION__);
   ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
                                mbedtls_test_cas_pem_len);
   if (ret != 0) {
     xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
+    return;
+  }
+
+  xprintf("%s load test server key\r\n", __FUNCTION__);
+  ret = mbedtls_pk_parse_key(&pkey, (const unsigned char *) mbedtls_test_srv_key,
+                             mbedtls_test_srv_key_len, NULL, 0);
+  if (ret != 0) {
+    xprintf(" failed\n  !  mbedtls_pk_parse_key returned %d\n\n", ret);
     return;
   }
 
@@ -154,7 +163,7 @@ void MX_MBEDTLS_Init(void) {
   }
 
   mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
-//  mbedtls_ssl_conf_dbg(&conf, my_debug, stdout);
+  mbedtls_ssl_conf_dbg(&conf, my_debug, stdout);
 
   mbedtls_ssl_conf_ca_chain(&conf, srvcert.next, NULL);
   if ((ret = mbedtls_ssl_conf_own_cert(&conf, &srvcert, &pkey)) != 0) {
