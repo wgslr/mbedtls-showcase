@@ -246,7 +246,7 @@ static void low_level_init(struct netif *netif)
   heth.Init.PhyAddress = LAN8742A_PHY_ADDRESS;
   MACAddr[0] = 0x00;
   MACAddr[1] = 0x80;
-  MACAddr[2] = 0xE2;
+  MACAddr[2] = 0xA2;
   MACAddr[3] = 0x00;
   MACAddr[4] = 0x00;
   MACAddr[5] = 0x00;

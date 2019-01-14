@@ -60,9 +60,15 @@
 #include <mbedtls/entropy.h>
 #include <mbedtls/certs.h>
 #include <mbedtls/error.h>
+#include <lib.h>
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
+// FIXME hand-make
+#define HTTP_RESPONSE \
+    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
+    "<h2>mbed TLS Test Server</h2>\r\n" \
+"<p>Successful connection using: %s</p>\r\n"
 /* USER CODE END 1 */
 
 /* Global variables ---------------------------------------------------------*/
@@ -222,8 +228,86 @@ void MX_MBEDTLS_Init(void) {
 
   xprintf(" handshaked\n");
 
+  char buff[200];
+  unsigned len = 0;
+  do {
+    unsigned len = sizeof(buff) - 1;
+    memset(buff, 0, sizeof(buff));
+    ret = mbedtls_ssl_read(&ssl, buff, len);
 
-  xprintf("%s end\r\n", __FUNCTION__);
+    if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
+      continue;
+
+    if (ret <= 0) {
+      switch (ret) {
+        case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+          xprintf(" connection was closed gracefully\n");
+          break;
+
+        case MBEDTLS_ERR_NET_CONN_RESET:
+          xprintf(" connection was reset by peer\n");
+          break;
+
+        default:
+          xprintf(" mbedtls_ssl_read returned -0x%x\n", -ret);
+          break;
+      }
+
+      break;
+    }
+
+    len = (unsigned) ret;
+    xprintf(" %u bytes read\n\n%s", len, (char *) buff);
+
+    if (ret > 0)
+      break;
+  } while (1);
+
+  xprintf("Received message: %.*s\n", len, buff);
+
+
+  /*
+   * 7. Write the 200 Response
+   */
+  xprintf("  > Write to client:");
+  fflush(stdout);
+
+  memset(buff, 0, sizeof(buff));
+  len = sprintf((char *) buff, HTTP_RESPONSE,
+                mbedtls_ssl_get_ciphersuite(&ssl));
+
+  while ((ret = mbedtls_ssl_write(&ssl, buff, len)) <= 0) {
+    if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
+      xprintf(" failed\n  ! peer closed the connection\n\n");
+      goto reset;
+    }
+
+    if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+      xprintf(" failed\n  ! mbedtls_ssl_write returned %d\n\n", ret);
+      goto reset;
+    }
+  }
+
+  len = (unsigned) ret;
+  xprintf(" %u bytes written\n\n%s\n", len, (char *) buff);
+
+  xprintf("  . Closing the connection...");
+
+  while ((ret = mbedtls_ssl_close_notify(&ssl)) < 0) {
+    if (ret != MBEDTLS_ERR_SSL_WANT_READ &&
+        ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+      xprintf(" failed\n  ! mbedtls_ssl_close_notify returned %d\n\n", ret);
+      goto reset;
+    }
+  }
+
+  xprintf(" ok\n");
+
+  ret = 0;
+  goto reset;
+
+
+
   /* USER CODE END 3 */
 
 }
