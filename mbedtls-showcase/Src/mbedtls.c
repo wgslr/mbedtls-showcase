@@ -97,7 +97,8 @@ typedef struct {
 /* USER CODE BEGIN 2 */
 
 http_method parse_method(const char *str);
-request parse_request(const char buff[MAX_MESSAGE_SIZE]);
+
+request *parse_request(const char buff[MAX_MESSAGE_SIZE]);
 
 mbedtls_net_context listen_net_ctx;
 mbedtls_net_context client_net_ctx;
@@ -116,6 +117,11 @@ static void my_debug(void *ctx, int level,
   xprintf("%s:%04d: %s\n", file, line, str);
 //  fflush(  (FILE *) ctx  );
 }
+
+inline unsigned min(const unsigned x, const unsigned y) {
+  return x < y ? x : y;
+}
+
 /* USER CODE END 2 */
 
 /* MBEDTLS init function */
@@ -254,7 +260,7 @@ void MX_MBEDTLS_Init(void) {
   xprintf(" handshaked\n");
 
   unsigned char buff[MAX_MESSAGE_SIZE];
-  unsigned len = 0;
+  int len = 0;
   do {
     unsigned len = sizeof(buff) - 1;
     memset(buff, 0, sizeof(buff));
@@ -289,11 +295,11 @@ void MX_MBEDTLS_Init(void) {
   } while (1);
 
   xprintf("Received message: %.*s\n", len, buff);
-  request received_req = parse_request((char *) buff);
+  request *received_req = parse_request((char *) buff);
 
-  xprintf("Request type: %d\n", received_req.method);
-  xprintf("Request path: %s\n", received_req.path);
-  xprintf("Request body: %s\n", received_req.body);
+  xprintf("Request type: %d\n", received_req->method);
+  xprintf("Request path: %s\n", received_req->path);
+  xprintf("Request body: %s\n", received_req->body);
 
   /*
    * 7. Write the 200 Response
@@ -302,9 +308,8 @@ void MX_MBEDTLS_Init(void) {
   fflush(stdout);
 
   memset(buff, 0, sizeof(buff));
-  int ret2;
-  ret2 = snprintf((char *) buff, MAX_MESSAGE_SIZE, HTTP_RESPONSE,
-                  mbedtls_ssl_get_ciphersuite(&ssl));
+  len = snprintf((char *) buff, MAX_MESSAGE_SIZE, HTTP_RESPONSE,
+                 mbedtls_ssl_get_ciphersuite(&ssl));
 
   while ((ret = mbedtls_ssl_write(&ssl, buff, len)) <= 0) {
     if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
@@ -318,7 +323,7 @@ void MX_MBEDTLS_Init(void) {
     }
   }
 
-  len = (unsigned) ret2;
+  len = (unsigned) ret;
   xprintf(" %u bytes written\n\n%s\n", len, (char *) buff);
 
   xprintf("  . Closing the connection...");
@@ -332,6 +337,9 @@ void MX_MBEDTLS_Init(void) {
   }
 
   xprintf(" ok\n");
+
+  free(received_req);
+  received_req = NULL;
 
   ret = 0;
   goto reset;
@@ -350,8 +358,8 @@ void MX_MBEDTLS_Init(void) {
  * @param buff Array containing data sent by the connecting client
  * @return request Struct describing the request
  */
-request parse_request(const char buff[MAX_MESSAGE_SIZE]) {
-  request req;
+request *parse_request(const char buff[MAX_MESSAGE_SIZE]) {
+  request *req = calloc(1, sizeof(req));
   char tmp[10];
   memset(tmp, 0, 10);
   const char *it = buff;
@@ -359,20 +367,24 @@ request parse_request(const char buff[MAX_MESSAGE_SIZE]) {
   // parse method
   const char *next = strchr(it, ' ');
   memcpy(tmp, it, next - it);
-  req.method = parse_method(tmp);
+  req->method = parse_method(tmp);
 
   // parse path
   it = next + 1;
   next = strchr(it, ' ');
+  const unsigned path_len = next - it;
 
-  memcpy(&req.path, it, next - it);
-  req.path[next - it] = '\0';
+  memcpy(&req->path, it, path_len);
+  req->path[path_len] = '\0';
 
   // parse body
+
   it = next + 1;
   next = strstr(it, "\r\n\r\n");
   it = next + 4;
-  strncpy(req.body, it, MAX_MESSAGE_SIZE);
+  const unsigned body_len = min(MAX_MESSAGE_SIZE, strlen(it));
+  memcpy(&req->body, it, body_len);
+  req->body[body_len] = '\0';
 
   return req;
 }
