@@ -61,6 +61,7 @@
 #include <mbedtls/certs.h>
 #include <mbedtls/error.h>
 #include <lib.h>
+#include <stdbool.h>
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
@@ -69,11 +70,35 @@
     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
     "<h2>mbed TLS Test Server</h2>\r\n" \
 "<p>Successful connection using: %s</p>\r\n"
+
+// 8 KiB
+#define MAX_MESSAGE_SIZE 512
+#define MAX_PATH_SIZE 255
+
+
+typedef enum http_method {
+    GET,
+    POST,
+    PUT,
+    PATCH,
+    DELETE,
+    UNKNOWN
+} http_method;
+
+typedef struct {
+    http_method method;
+    char path[MAX_PATH_SIZE];
+    char body[MAX_MESSAGE_SIZE];
+} request;
 /* USER CODE END 1 */
 
 /* Global variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN 2 */
+
+http_method parse_method(const char *str);
+request parse_request(const char buff[MAX_MESSAGE_SIZE]);
+
 mbedtls_net_context listen_net_ctx;
 mbedtls_net_context client_net_ctx;
 mbedtls_entropy_context entropy;
@@ -228,7 +253,7 @@ void MX_MBEDTLS_Init(void) {
 
   xprintf(" handshaked\n");
 
-  char buff[200];
+  unsigned char buff[MAX_MESSAGE_SIZE];
   unsigned len = 0;
   do {
     unsigned len = sizeof(buff) - 1;
@@ -264,7 +289,11 @@ void MX_MBEDTLS_Init(void) {
   } while (1);
 
   xprintf("Received message: %.*s\n", len, buff);
+  request received_req = parse_request((char *) buff);
 
+  xprintf("Request type: %d\n", received_req.method);
+  xprintf("Request path: %s\n", received_req.path);
+  xprintf("Request body: %s\n", received_req.body);
 
   /*
    * 7. Write the 200 Response
@@ -273,8 +302,9 @@ void MX_MBEDTLS_Init(void) {
   fflush(stdout);
 
   memset(buff, 0, sizeof(buff));
-  len = sprintf((char *) buff, HTTP_RESPONSE,
-                mbedtls_ssl_get_ciphersuite(&ssl));
+  int ret2;
+  ret2 = snprintf((char *) buff, MAX_MESSAGE_SIZE, HTTP_RESPONSE,
+                  mbedtls_ssl_get_ciphersuite(&ssl));
 
   while ((ret = mbedtls_ssl_write(&ssl, buff, len)) <= 0) {
     if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
@@ -288,7 +318,7 @@ void MX_MBEDTLS_Init(void) {
     }
   }
 
-  len = (unsigned) ret;
+  len = (unsigned) ret2;
   xprintf(" %u bytes written\n\n%s\n", len, (char *) buff);
 
   xprintf("  . Closing the connection...");
@@ -306,13 +336,63 @@ void MX_MBEDTLS_Init(void) {
   ret = 0;
   goto reset;
 
-
-
   /* USER CODE END 3 */
 
 }
-
 /* USER CODE BEGIN 4 */
+
+/**
+ * Parses HTTP message. The first line consists of the HTTP Method,
+ * resource path and HTTP version.
+ * In further lines HTTP headers are specified, which are skippe by this function.
+ * After an empty line there is optional message body.
+ *
+ * @param buff Array containing data sent by the connecting client
+ * @return request Struct describing the request
+ */
+request parse_request(const char buff[MAX_MESSAGE_SIZE]) {
+  request req;
+  char tmp[10];
+  memset(tmp, 0, 10);
+  const char *it = buff;
+
+  // parse method
+  const char *next = strchr(it, ' ');
+  memcpy(tmp, it, next - it);
+  req.method = parse_method(tmp);
+
+  // parse path
+  it = next + 1;
+  next = strchr(it, ' ');
+
+  memcpy(&req.path, it, next - it);
+  req.path[next - it] = '\0';
+
+  // parse body
+  it = next + 1;
+  next = strstr(it, "\r\n\r\n");
+  it = next + 4;
+  strncpy(req.body, it, MAX_MESSAGE_SIZE);
+
+  return req;
+}
+
+http_method parse_method(const char *str) {
+  if (strcmp("GET", str) == 0) {
+    return GET;
+  } else if (strcmp("POST", str) == 0) {
+    return POST;
+  } else if (strcmp("PATCH", str) == 0) {
+    return PATCH;
+  } else if (strcmp("PUT", str) == 0) {
+    return PUT;
+  } else if (strcmp("DELETE", str) == 0) {
+    return DELETE;
+  } else {
+    return UNKNOWN;
+  }
+}
+
 /* USER CODE END 4 */
 
 /**
