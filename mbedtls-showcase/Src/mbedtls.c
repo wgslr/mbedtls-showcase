@@ -86,10 +86,19 @@ typedef enum http_method {
 } http_method;
 
 typedef struct {
+    // client input
     http_method method;
     char path[MAX_PATH_SIZE];
     char body[MAX_MESSAGE_SIZE];
 } request;
+
+
+typedef struct {
+    // response
+    char code[4];
+    const char *body;
+} response;
+
 /* USER CODE END 1 */
 
 /* Global variables ---------------------------------------------------------*/
@@ -99,6 +108,8 @@ typedef struct {
 http_method parse_method(const char *str);
 
 request *parse_request(const char buff[MAX_MESSAGE_SIZE]);
+
+response handle_request(const request *req);
 
 mbedtls_net_context listen_net_ctx;
 mbedtls_net_context client_net_ctx;
@@ -301,6 +312,8 @@ void MX_MBEDTLS_Init(void) {
   xprintf("Request path: %s\n", received_req->path);
   xprintf("Request body: %s\n", received_req->body);
 
+  response resp = handle_request(received_req);
+
   /*
    * 7. Write the 200 Response
    */
@@ -308,8 +321,9 @@ void MX_MBEDTLS_Init(void) {
   fflush(stdout);
 
   memset(buff, 0, sizeof(buff));
-  len = snprintf((char *) buff, MAX_MESSAGE_SIZE, HTTP_RESPONSE,
-                 mbedtls_ssl_get_ciphersuite(&ssl));
+  len = snprintf((char *) buff, MAX_MESSAGE_SIZE,
+                 "HTTP/1.0 %s\r\nContent-Type: text/html\r\n\r\n%s\r\n",
+                 resp.code, resp.body);
 
   while ((ret = mbedtls_ssl_write(&ssl, buff, len)) <= 0) {
     if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
@@ -347,7 +361,23 @@ void MX_MBEDTLS_Init(void) {
   /* USER CODE END 3 */
 
 }
+
 /* USER CODE BEGIN 4 */
+
+// handles the request b
+response handle_request(const request *req) {
+  response resp = {0};
+
+  if (req->method == GET) {
+    strcpy(resp.code, "200");
+    resp.body = "I'm sending you a response to GET request";
+  } else {
+    strcpy(resp.code, "405");
+    resp.body = "No action bound to this HTTP method, sorry!";
+  }
+
+  return resp;
+}
 
 /**
  * Parses HTTP message. The first line consists of the HTTP Method,
