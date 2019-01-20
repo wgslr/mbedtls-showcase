@@ -63,6 +63,18 @@
 /* Global variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN 1 */
+typedef enum http_method {
+    GET,
+    HEAD,
+    POST,
+    PUT,
+    DELETE,
+    CONNECT,
+    OPTIONS,
+    TRACE,
+    PATCH,
+    UNKNOWN
+} http_method;
 /* USER CODE END 1 */
 
 /* MBEDTLS init function */

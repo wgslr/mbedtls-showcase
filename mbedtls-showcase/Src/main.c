@@ -360,9 +360,13 @@ void StartDefaultTask(void const *argument) {
   MX_USB_HOST_Init();
 
   /* USER CODE BEGIN 5 */
+  int ret = 0;
+
   /* Infinite loop */
   for (;;) {
-    single_connection();
+    if((ret = single_connection()) != 0) {
+      xprintf("Error! Server loop function returned %d\n\n", ret);
+    }
   }
   /* USER CODE END 5 */
 }

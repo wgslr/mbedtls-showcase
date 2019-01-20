@@ -70,19 +70,6 @@
 #define MAX_PATH_SIZE 255
 
 
-typedef enum http_method {
-    GET,
-    HEAD,
-    POST,
-    PUT,
-    DELETE,
-    CONNECT,
-    OPTIONS,
-    TRACE,
-    PATCH,
-    UNKNOWN
-} http_method;
-
 typedef struct {
     // client input
     http_method method;
@@ -126,6 +113,10 @@ static void my_debug(void *ctx, int level,
 }
 
 inline unsigned min(const unsigned x, const unsigned y) {
+  return x < y ? x : y;
+}
+
+inline unsigned long minl(const unsigned long x, const unsigned long y) {
   return x < y ? x : y;
 }
 
@@ -261,7 +252,7 @@ const char *method_to_str(http_method method) {
       return "TRACE";
     case PATCH:
       return "PATCH";
-    case UNKNOWN:
+    default:
       return "unknown";
   }
 }
@@ -295,9 +286,10 @@ int single_connection(void) {
 
   xprintf("Reading client's message\n");
   unsigned char buff[MAX_MESSAGE_SIZE];
+  buff[MAX_MESSAGE_SIZE - 1] = '\0';
+  unsigned to_read = sizeof(buff) - 1;
   unsigned bytes_read = 0;
   do {
-    unsigned to_read = sizeof(buff) - 1;
     memset(buff, 0, sizeof(buff));
     ret = mbedtls_ssl_read(&ssl, buff, to_read);
 
@@ -400,29 +392,34 @@ response handle_request(const request *req) {
 /**
  * Parses HTTP message. The first line consists of the HTTP Method,
  * resource path and HTTP version.
- * In further lines HTTP headers are specified, which are skippe by this function.
+ * In further lines HTTP headers are specified, which are skipped by this function.
  * After an empty line there is optional message body.
  *
  * @param buff Array containing data sent by the connecting client
  * @return request Struct describing the request
  */
-request *parse_request(const char buff[MAX_MESSAGE_SIZE]) {
-  request *req = calloc(1, sizeof(req));
-  char tmp[10];
-  memset(tmp, 0, 10);
-  const char *it = buff;
+request *parse_request(const char input[MAX_MESSAGE_SIZE]) {
+  request *req = calloc(1, sizeof(request));
+
+  // space for passing around null-terminated strings
+  // being part of the request
+  const size_t TMP_SIZE = 10;
+  char tmp[TMP_SIZE + 1];
+  memset(tmp, 0, TMP_SIZE + 1);
+
+  const char *it = input;
 
   // parse method
   const char *next = strchr(it, ' ');
-  memcpy(tmp, it, next - it);
+  memcpy(tmp, it, minl(next - it, TMP_SIZE));
   req->method = parse_method(tmp);
 
   // parse path
   it = next + 1;
   next = strchr(it, ' ');
-  const unsigned path_len = next - it;
+  const size_t path_len = next - it;
 
-  memcpy(&req->path, it, path_len);
+  memcpy(&req->path, it, minl(next - it, MAX_PATH_SIZE - 1));
   req->path[path_len] = '\0';
 
   // parse body
@@ -430,24 +427,38 @@ request *parse_request(const char buff[MAX_MESSAGE_SIZE]) {
   it = next + 1;
   next = strstr(it, "\r\n\r\n");
   it = next + 4;
-  const unsigned body_len = min(MAX_MESSAGE_SIZE, strlen(it));
+  const size_t body_len = strnlen(it, MAX_MESSAGE_SIZE - 1);
   memcpy(&req->body, it, body_len);
   req->body[body_len] = '\0';
 
   return req;
 }
 
+
+/**
+ * Matches HTTP method string to one of enum values.
+ * @param str
+ * @return
+ */
 http_method parse_method(const char *str) {
   if (strcmp("GET", str) == 0) {
     return GET;
+  } else if (strcmp("HEAD", str) == 0) {
+    return HEAD;
   } else if (strcmp("POST", str) == 0) {
     return POST;
-  } else if (strcmp("PATCH", str) == 0) {
-    return PATCH;
   } else if (strcmp("PUT", str) == 0) {
     return PUT;
   } else if (strcmp("DELETE", str) == 0) {
     return DELETE;
+  } else if (strcmp("CONNECT", str) == 0) {
+    return CONNECT;
+  } else if (strcmp("OPTIONS", str) == 0) {
+    return OPTIONS;
+  } else if (strcmp("TRACE", str) == 0) {
+    return TRACE;
+  } else if (strcmp("PATCH", str) == 0) {
+    return PATCH;
   } else {
     return UNKNOWN;
   }
