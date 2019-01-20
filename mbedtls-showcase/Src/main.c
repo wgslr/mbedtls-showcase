@@ -362,10 +362,7 @@ void StartDefaultTask(void const *argument) {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for (;;) {
-
-    xprintf("Toggling LED \r\n");
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-    osDelay(1000);
+    single_connection();
   }
   /* USER CODE END 5 */
 }

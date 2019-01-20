@@ -65,23 +65,21 @@
 /* USER CODE END 0 */
 
 /* USER CODE BEGIN 1 */
-// FIXME hand-make
-#define HTTP_RESPONSE \
-    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
-    "<h2>mbed TLS Test Server</h2>\r\n" \
-"<p>Successful connection using: %s</p>\r\n"
 
-// 8 KiB
 #define MAX_MESSAGE_SIZE 512
 #define MAX_PATH_SIZE 255
 
 
 typedef enum http_method {
     GET,
+    HEAD,
     POST,
     PUT,
-    PATCH,
     DELETE,
+    CONNECT,
+    OPTIONS,
+    TRACE,
+    PATCH,
     UNKNOWN
 } http_method;
 
@@ -94,7 +92,6 @@ typedef struct {
 
 
 typedef struct {
-    // response
     char code[4];
     const char *body;
 } response;
@@ -126,7 +123,6 @@ static void my_debug(void *ctx, int level,
   ((void) level);
 
   xprintf("%s:%04d: %s\n", file, line, str);
-//  fflush(  (FILE *) ctx  );
 }
 
 inline unsigned min(const unsigned x, const unsigned y) {
@@ -225,57 +221,85 @@ void MX_MBEDTLS_Init(void) {
   }
 
   xprintf(" ok\n");
+  return;
+//
+//  // @fixme extract function with a loop
+//  reset:
+//#ifdef MBEDTLS_ERROR_C
+//  if (ret != 0) {
+//    char error_buf[100];
+//    mbedtls_strerror(ret, error_buf, 100);
+//    xprintf("Last error was: %d - %s\n\n", ret, error_buf);
+//  }
+//#endif
+//
+//  goto reset;
 
-  // @fixme extract function with a loop
-  reset:
-#ifdef MBEDTLS_ERROR_C
-  if (ret != 0) {
-    char error_buf[100];
-    mbedtls_strerror(ret, error_buf, 100);
-    xprintf("Last error was: %d - %s\n\n", ret, error_buf);
+  /* USER CODE END 3 */
+
+}
+
+/* USER CODE BEGIN 4 */
+
+const char *method_to_str(http_method method) {
+  switch (method) {
+    case GET:
+      return "GET";
+    case HEAD:
+      return "HEAD";
+    case POST:
+      return "POST";
+    case PUT:
+      return "PUT";
+    case DELETE:
+      return "DELETE";
+    case CONNECT:
+      return "CONNECT";
+    case OPTIONS:
+      return "OPTIONS";
+    case TRACE:
+      return "TRACE";
+    case PATCH:
+      return "PATCH";
+    case UNKNOWN:
+      return "unknown";
   }
-#endif
+}
+
+int single_connection(void) {
+  int ret = 0;
 
   mbedtls_net_free(&client_net_ctx);
-
   mbedtls_ssl_session_reset(&ssl);
 
-  /*
-   * 3. Wait until a client connects
-   */
-  xprintf("  . Waiting for a remote connection ...\n");
-
+  xprintf("Waiting for a remote connection...\n");
   if ((ret = mbedtls_net_accept(&listen_net_ctx, &client_net_ctx,
                                 NULL, 0, NULL)) != 0) {
-    xprintf(" failed\n  ! mbedtls_net_accept returned %d\n\n", ret);
-    return;
+    xprintf("Error! mbedtls_net_accept returned %d\n\n", ret);
+    return ret;
+  } else {
+    xprintf("Connection incoming.\n\n");
   }
 
+  // Set up input/output handle (BIO)
   mbedtls_ssl_set_bio(&ssl, &client_net_ctx, mbedtls_net_send, mbedtls_net_recv, NULL);
 
-  xprintf(" ok\n");
-
-  /*
-   * 5. Handshake
-   */
-  xprintf("  . Performing the SSL/TLS handshake...\n");
-
+  xprintf("Performing the SSL/TLS handshake...\n");
   while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
-    xprintf(" looping handshake\n");
     if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-      xprintf(" failed\n  ! mbedtls_ssl_handshake returned %d\n\n", ret);
-      goto reset;
+      xprintf("Error! mbedtls_ssl_handshake returned %d\n\n", ret);
+      return ret;
     }
   }
+  xprintf("Handshake finished.\n\n");
 
-  xprintf(" handshaked\n");
-
+  xprintf("Reading client's message\n");
   unsigned char buff[MAX_MESSAGE_SIZE];
-  int len = 0;
+  unsigned bytes_read = 0;
   do {
-    unsigned len = sizeof(buff) - 1;
+    unsigned to_read = sizeof(buff) - 1;
     memset(buff, 0, sizeof(buff));
-    ret = mbedtls_ssl_read(&ssl, buff, len);
+    ret = mbedtls_ssl_read(&ssl, buff, to_read);
 
     if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
       continue;
@@ -283,86 +307,80 @@ void MX_MBEDTLS_Init(void) {
     if (ret <= 0) {
       switch (ret) {
         case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
-          xprintf(" connection was closed gracefully\n");
+          xprintf("Connection was closed gracefully\n");
           break;
 
         case MBEDTLS_ERR_NET_CONN_RESET:
-          xprintf(" connection was reset by peer\n");
+          xprintf("Connection was reset by peer\n");
           break;
 
         default:
-          xprintf(" mbedtls_ssl_read returned -0x%x\n", -ret);
+          xprintf("mbedtls_ssl_read returned -0x%x\n", -ret);
           break;
       }
 
       break;
     }
 
-    len = (unsigned) ret;
-    xprintf(" %u bytes read\n\n%s", len, (char *) buff);
-
-    if (ret > 0)
+    if (ret > 0) {
+      bytes_read = (unsigned int) ret;
       break;
+    }
   } while (1);
 
-  xprintf("Received message: %.*s\n", len, buff);
+  xprintf("Read %u bytes.\n\n", bytes_read);
+
+  xprintf("Parsing input as an HTTP message...\n");
   request *received_req = parse_request((char *) buff);
 
-  xprintf("Request type: %d\n", received_req->method);
-  xprintf("Request path: %s\n", received_req->path);
-  xprintf("Request body: %s\n", received_req->body);
+  xprintf("Request type: %s\n", method_to_str(received_req->method));
+  xprintf("Request path: %s\n\n", received_req->path);
 
+
+  xprintf("Processing HTTP request...\n");
   response resp = handle_request(received_req);
+  xprintf("Processing HTTP request...\n");
 
-  /*
-   * 7. Write the 200 Response
-   */
-  xprintf("  > Write to client:");
-  fflush(stdout);
+  xprintf("Writing response...\n");
 
   memset(buff, 0, sizeof(buff));
-  len = snprintf((char *) buff, MAX_MESSAGE_SIZE,
+  ret = snprintf((char *) buff, MAX_MESSAGE_SIZE,
                  "HTTP/1.0 %s\r\nContent-Type: text/html\r\n\r\n%s\r\n",
                  resp.code, resp.body);
+  if (ret < 0)
+    return ret;
+  size_t bytes_to_write = (size_t) ret;
 
-  while ((ret = mbedtls_ssl_write(&ssl, buff, len)) <= 0) {
+  while ((ret = mbedtls_ssl_write(&ssl, buff, bytes_to_write)) <= 0) {
     if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
-      xprintf(" failed\n  ! peer closed the connection\n\n");
-      goto reset;
+      xprintf("Error! mbedtls_ssl_write returned %d\n\n", ret);
+      return ret;
     }
 
     if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-      xprintf(" failed\n  ! mbedtls_ssl_write returned %d\n\n", ret);
-      goto reset;
+      xprintf("Error! mbedtls_ssl_write returned %d\n\n", ret);
+      return ret;
     }
   }
 
-  len = (unsigned) ret;
-  xprintf(" %u bytes written\n\n%s\n", len, (char *) buff);
+  xprintf("Written %d bytes.\n\n", ret);
 
-  xprintf("  . Closing the connection...");
+  xprintf("Closing the connection...\n");
 
   while ((ret = mbedtls_ssl_close_notify(&ssl)) < 0) {
     if (ret != MBEDTLS_ERR_SSL_WANT_READ &&
         ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-      xprintf(" failed\n  ! mbedtls_ssl_close_notify returned %d\n\n", ret);
-      goto reset;
+      xprintf("Error! mbedtls_ssl_close_notify returned %d\n\n", ret);
+      return ret;
     }
   }
+  xprintf("Connection closed.\n\n");
 
-  xprintf(" ok\n");
 
   free(received_req);
-  received_req = NULL;
-
-  ret = 0;
-  goto reset;
-
-  /* USER CODE END 3 */
-
+  return 0;
 }
 
-/* USER CODE BEGIN 4 */
 
 // handles the request b
 response handle_request(const request *req) {

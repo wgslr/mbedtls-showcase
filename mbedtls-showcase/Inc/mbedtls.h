@@ -69,6 +69,7 @@
 void MX_MBEDTLS_Init(void);
 
 /* USER CODE BEGIN 2 */
+int single_connection(void);
 /* USER CODE END 2 */
 
 #ifdef __cplusplus
