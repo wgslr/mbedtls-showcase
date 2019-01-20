@@ -88,13 +88,6 @@ typedef struct {
 /* Global variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN 2 */
-
-http_method parse_method(const char *str);
-
-request *parse_request(const char buff[MAX_MESSAGE_SIZE]);
-
-response handle_request(const request *req);
-
 mbedtls_net_context listen_net_ctx;
 mbedtls_net_context client_net_ctx;
 mbedtls_entropy_context entropy;
@@ -103,6 +96,17 @@ mbedtls_ssl_context ssl;
 mbedtls_ssl_config conf;
 mbedtls_x509_crt srvcert;
 mbedtls_pk_context pkey;
+
+
+http_method parse_method(const char *str);
+
+request *parse_request(const char buff[MAX_MESSAGE_SIZE]);
+
+response handle_request(const request *req);
+
+int read_socket(mbedtls_ssl_context *ssl, unsigned char buff[MAX_MESSAGE_SIZE]);
+
+int write_socket(mbedtls_ssl_context *ssl, const unsigned char *message, size_t length);
 
 static void my_debug(void *ctx, int level,
                      const char *file, int line,
@@ -259,6 +263,7 @@ const char *method_to_str(http_method method) {
 
 int single_connection(void) {
   int ret = 0;
+  unsigned char *buff = malloc(MAX_MESSAGE_SIZE * sizeof(unsigned char));
 
   mbedtls_net_free(&client_net_ctx);
   mbedtls_ssl_session_reset(&ssl);
@@ -284,78 +289,36 @@ int single_connection(void) {
   }
   xprintf("Handshake finished.\n\n");
 
-  xprintf("Reading client's message\n");
-  unsigned char buff[MAX_MESSAGE_SIZE];
-  buff[MAX_MESSAGE_SIZE - 1] = '\0';
-  unsigned to_read = sizeof(buff) - 1;
-  unsigned bytes_read = 0;
-  do {
-    memset(buff, 0, sizeof(buff));
-    ret = mbedtls_ssl_read(&ssl, buff, to_read);
-
-    if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
-      continue;
-
-    if (ret <= 0) {
-      switch (ret) {
-        case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
-          xprintf("Connection was closed gracefully\n");
-          break;
-
-        case MBEDTLS_ERR_NET_CONN_RESET:
-          xprintf("Connection was reset by peer\n");
-          break;
-
-        default:
-          xprintf("mbedtls_ssl_read returned -0x%x\n", -ret);
-          break;
-      }
-
-      break;
-    }
-
-    if (ret > 0) {
-      bytes_read = (unsigned int) ret;
-      break;
-    }
-  } while (1);
-
-  xprintf("Read %u bytes.\n\n", bytes_read);
+  xprintf("Reading client's message...\n");
+  if ((ret = read_socket(&ssl, buff)) < 0) {
+    return ret;
+  } else {
+    xprintf("Read %d bytes.\n\n", ret);
+  }
 
   xprintf("Parsing input as an HTTP message...\n");
   request *received_req = parse_request((char *) buff);
 
-  xprintf("Request type: %s\n", method_to_str(received_req->method));
+  xprintf("Request method: %s\n", method_to_str(received_req->method));
   xprintf("Request path: %s\n\n", received_req->path);
 
 
   xprintf("Processing HTTP request...\n");
   response resp = handle_request(received_req);
-  xprintf("Processing HTTP request...\n");
 
   xprintf("Writing response...\n");
-
-  memset(buff, 0, sizeof(buff));
+  memset(buff, 0, MAX_MESSAGE_SIZE * sizeof(unsigned char));
   ret = snprintf((char *) buff, MAX_MESSAGE_SIZE,
                  "HTTP/1.0 %s\r\nContent-Type: text/html\r\n\r\n%s\r\n",
                  resp.code, resp.body);
   if (ret < 0)
     return ret;
-  size_t bytes_to_write = (size_t) ret;
 
-  while ((ret = mbedtls_ssl_write(&ssl, buff, bytes_to_write)) <= 0) {
-    if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
-      xprintf("Error! mbedtls_ssl_write returned %d\n\n", ret);
-      return ret;
-    }
-
-    if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-      xprintf("Error! mbedtls_ssl_write returned %d\n\n", ret);
-      return ret;
-    }
+  if ((ret = write_socket(&ssl, buff, (size_t) ret)) < 0) {
+    return ret;
+  } else {
+    xprintf("Written %d bytes.\n\n", ret);
   }
-
-  xprintf("Written %d bytes.\n\n", ret);
 
   xprintf("Closing the connection...\n");
 
@@ -371,6 +334,50 @@ int single_connection(void) {
 
   free(received_req);
   return 0;
+}
+
+int read_socket(mbedtls_ssl_context *ssl, unsigned char buff[MAX_MESSAGE_SIZE]) {
+  int ret = 0;
+  unsigned to_read = MAX_MESSAGE_SIZE - 1;
+
+  do {
+    memset(buff, 0, MAX_MESSAGE_SIZE);
+    ret = mbedtls_ssl_read(ssl, buff, to_read);
+  } while (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+
+  if(ret <= 0) {
+    switch (ret) {
+      case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
+        xprintf("Connection was closed gracefully\n");
+        break;
+      case MBEDTLS_ERR_NET_CONN_RESET:
+        xprintf("Connection was reset by peer\n");
+        break;
+      default:
+        xprintf("mbedtls_ssl_read returned -0x%x\n", -ret);
+    }
+  }
+
+  return ret;
+}
+
+
+int write_socket(mbedtls_ssl_context *ssl, const unsigned char *message, size_t length) {
+  int ret = 0;
+
+  while ((ret = mbedtls_ssl_write(ssl, message, length)) <= 0) {
+    if (ret == MBEDTLS_ERR_NET_CONN_RESET) {
+      xprintf("Error! mbedtls_ssl_write returned %d\n\n", ret);
+      return ret;
+    }
+
+    if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+      xprintf("Error! mbedtls_ssl_write returned %d\n\n", ret);
+      return ret;
+    }
+  }
+
+  return ret;
 }
 
 
