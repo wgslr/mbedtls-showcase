@@ -163,7 +163,7 @@ int main(void) {
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
 
-  xprintf("Starting default task");
+  xprintf("Starting HTTPS server task\n");
 
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);

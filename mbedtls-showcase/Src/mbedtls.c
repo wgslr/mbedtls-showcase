@@ -132,10 +132,10 @@ void MX_MBEDTLS_Init(void) {
  */
 
   /* USER CODE BEGIN 3 */
-  int ret = 257;
-  int delay = 6000;
-  xprintf("%s begin\r\n", __FUNCTION__);
+  int ret = 0;
+  const int DELAY = 6000;
 
+  xprintf("Initializing mbedTLS structures...\n");
   mbedtls_net_init(&listen_net_ctx);
   mbedtls_net_init(&client_net_ctx);
   mbedtls_ssl_init(&ssl);
@@ -146,58 +146,52 @@ void MX_MBEDTLS_Init(void) {
   mbedtls_ctr_drbg_init(&ctr_drbg);
 
   // ugly wait for DHCP
-  xprintf("wait for %ds\r\n", delay / 1000);
-  osDelay(delay);
+  osDelay(DELAY);
 
-  xprintf("%s attempt net_bind\r\n", __FUNCTION__);
   if ((ret = mbedtls_net_bind(&listen_net_ctx, NULL, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
-    xprintf("mbedtls_net_bind returned -0x%X\r\n", -ret);
+    xprintf("Error! mbedtls_ssl_read returned -0x%x\n", -ret);
     return;
   }
 
-  xprintf("%s load test server cert\r\n", __FUNCTION__);
+  xprintf("Loading server certificate...\n");
   ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_srv_crt,
                                mbedtls_test_srv_crt_len);
   if (ret != 0) {
-    xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
+    xprintf("Error! mbedtls_x509_crt_parse returned -0x%x\n", -ret);
     return;
   }
 
-
-  xprintf("%s load test CAs\r\n", __FUNCTION__);
-  ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
-                               mbedtls_test_cas_pem_len);
-  if (ret != 0) {
-    xprintf(" failed\n  !  mbedtls_x509_crt_parse returned %d\n\n", ret);
-    return;
-  }
-
-  xprintf("%s load test server key\r\n", __FUNCTION__);
+  xprintf("Loading server private key...\n");
   ret = mbedtls_pk_parse_key(&pkey, (const unsigned char *) mbedtls_test_srv_key,
                              mbedtls_test_srv_key_len, NULL, 0);
   if (ret != 0) {
-    xprintf(" failed\n  !  mbedtls_pk_parse_key returned %d\n\n", ret);
+    xprintf("Error! mbedtls_pk_parse_key returned -0x%x\n", -ret);
     return;
   }
 
-  xprintf("%s loaded certificates\r\n", __FUNCTION__);
+  xprintf("Loading CAs file...\n");
+  ret = mbedtls_x509_crt_parse(&srvcert, (const unsigned char *) mbedtls_test_cas_pem,
+                               mbedtls_test_cas_pem_len);
+  if (ret != 0) {
+    xprintf("Error! mbedtls_x509_crt_parse returned -0x%x\n", -ret);
+    return;
+  }
 
-  xprintf("  . Seeding the random number generator...\n");
+  xprintf("Certificates loaded.\n\n");
 
+  xprintf("Seeding the random number generator...\n");
   if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0)) != 0) {
-    xprintf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
+    xprintf("Error! mbedtls_ctr_drbg_seed returned -0x%x\n", -ret);
     return;
   }
-
-  xprintf("RNG seeded\n");
+  xprintf("RNG seeded.\n\n");
 
   xprintf("Configuring SSL....\n");
-
   if ((ret = mbedtls_ssl_config_defaults(&conf,
                                          MBEDTLS_SSL_IS_SERVER,
                                          MBEDTLS_SSL_TRANSPORT_STREAM,
                                          MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
-    xprintf(" failed\n  ! mbedtls_ssl_config_defaults returned %d\n\n", ret);
+    xprintf("Error! mbedtls_ssl_config_defaults returned -0x%x\n", -ret);
     return;
   }
 
@@ -206,29 +200,16 @@ void MX_MBEDTLS_Init(void) {
 
   mbedtls_ssl_conf_ca_chain(&conf, srvcert.next, NULL);
   if ((ret = mbedtls_ssl_conf_own_cert(&conf, &srvcert, &pkey)) != 0) {
-    xprintf(" failed\n  ! mbedtls_ssl_conf_own_cert returned %d\n\n", ret);
+    xprintf("Error! mbedtls_ssl_conf_own_cert returned -0x%x\n", -ret);
     return;
   }
 
   if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0) {
-    xprintf(" failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret);
+    xprintf("Error! mbedtls_ssl_setup returned -0x%x\n", -ret);
     return;
   }
 
-  xprintf(" ok\n");
-  return;
-//
-//  // @fixme extract function with a loop
-//  reset:
-//#ifdef MBEDTLS_ERROR_C
-//  if (ret != 0) {
-//    char error_buf[100];
-//    mbedtls_strerror(ret, error_buf, 100);
-//    xprintf("Last error was: %d - %s\n\n", ret, error_buf);
-//  }
-//#endif
-//
-//  goto reset;
+  xprintf("HTTPS server initialized.\n\n");
 
   /* USER CODE END 3 */
 
@@ -345,7 +326,7 @@ int read_socket(mbedtls_ssl_context *ssl, unsigned char buff[MAX_MESSAGE_SIZE]) 
     ret = mbedtls_ssl_read(ssl, buff, to_read);
   } while (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE);
 
-  if(ret <= 0) {
+  if (ret <= 0) {
     switch (ret) {
       case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
         xprintf("Connection was closed gracefully\n");

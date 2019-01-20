@@ -76,12 +76,6 @@ ip4_addr_t gw;
 
 /* USER CODE BEGIN 2 */
 
-void print_addr() {
-  xprintf("Address is %lu.", ipaddr.addr & (0xFF << 0));
-  xprintf("%lu.", (ipaddr.addr & (0xFF << 8)) >> 8);
-  xprintf("%lu.", (ipaddr.addr & (0xFF << 16)) >> 16);
-  xprintf("%lu\n", (ipaddr.addr & (0xFF << 24)) >> 24);
-}
 
 /* USER CODE END 2 */
 

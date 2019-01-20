@@ -99,12 +99,10 @@ static int initialized = 0;
  */
 void mbedtls_net_init(mbedtls_net_context *ctx) {
   /* USER CODE BEGIN 0 */
-  xprintf("%s begin\r\n", __FUNCTION__);
 
   ctx->fd = -1;
 
   if(initialized){
-    xprintf("%s LWIP already initialized\r\n", __FUNCTION__);
     return;
   }
 
@@ -113,7 +111,6 @@ void mbedtls_net_init(mbedtls_net_context *ctx) {
   /* USER CODE BEGIN 1 */
   initialized = 1;
 
-  xprintf("%s end\r\n", __FUNCTION__);
 /* USER CODE END 1 */
 }
 
@@ -189,7 +186,6 @@ int mbedtls_net_connect(mbedtls_net_context *ctx, const char *host, const char *
 int mbedtls_net_bind(mbedtls_net_context *ctx, const char *bind_ip, const char *port, int proto) {
   int ret = 0;
   /* USER CODE BEGIN 10 */
-  xprintf("%s begin\r\n", __FUNCTION__);
   int n;
   struct addrinfo hints, *addr_list, *cur;
 
@@ -244,7 +240,6 @@ int mbedtls_net_bind(mbedtls_net_context *ctx, const char *bind_ip, const char *
 
   freeaddrinfo(addr_list);
 
-  xprintf("%s end\r\n", __FUNCTION__);
   /* USER CODE END 10 */
 
   return ret;
